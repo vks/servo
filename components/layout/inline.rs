@@ -10,6 +10,7 @@ use display_list_builder::{FragmentDisplayListBuilding, InlineFlowDisplayListBui
 use floats::{FloatKind, Floats, PlacementInfo};
 use flow::{self, BaseFlow, FlowClass, Flow, ForceNonfloatedFlag, IS_ABSOLUTELY_POSITIONED};
 use flow::{MutableFlowUtils, OpaqueFlow};
+use flow_ref;
 use fragment::{CoordinateSystem, Fragment, FragmentBorderBoxIterator, SpecificFragmentInfo};
 use incremental::{REFLOW, REFLOW_OUT_OF_FLOW, RESOLVE_GENERATED_CONTENT};
 use layout_debug;
@@ -1598,6 +1599,7 @@ impl Flow for InlineFlow {
         self.base.restyle_damage.remove(REFLOW_OUT_OF_FLOW | REFLOW);
     }
 
+    #[allow(unsafe_code)]
     fn compute_absolute_position(&mut self, _: &LayoutContext) {
         // First, gather up the positions of all the containing blocks (if any).
         let mut containing_block_positions = Vec::new();
@@ -1634,9 +1636,10 @@ impl Flow for InlineFlow {
                                                              false);
             match fragment.specific {
                 SpecificFragmentInfo::InlineBlock(ref mut info) => {
-                    flow::mut_base(&mut *info.flow_ref).clip = clip;
+                    let flow = unsafe { flow_ref::deref_mut(&mut info.flow_ref) };
+                    flow::mut_base(flow).clip = clip;
 
-                    let block_flow = info.flow_ref.as_block();
+                    let block_flow = flow.as_block();
                     block_flow.base.absolute_position_info = self.base.absolute_position_info;
                     block_flow.base.stacking_relative_position =
                         stacking_relative_border_box.origin;
@@ -1644,8 +1647,9 @@ impl Flow for InlineFlow {
                         self.base.stacking_relative_position_of_display_port;
                 }
                 SpecificFragmentInfo::InlineAbsoluteHypothetical(ref mut info) => {
-                    flow::mut_base(&mut *info.flow_ref).clip = clip;
-                    let block_flow = info.flow_ref.as_block();
+                    let flow = unsafe { flow_ref::deref_mut(&mut info.flow_ref) };
+                    flow::mut_base(flow).clip = clip;
+                    let block_flow = flow.as_block();
                     block_flow.base.absolute_position_info = self.base.absolute_position_info;
                     block_flow.base.stacking_relative_position =
                         stacking_relative_border_box.origin;
@@ -1654,9 +1658,10 @@ impl Flow for InlineFlow {
 
                 }
                 SpecificFragmentInfo::InlineAbsolute(ref mut info) => {
-                    flow::mut_base(&mut *info.flow_ref).clip = clip;
+                    let flow = unsafe { flow_ref::deref_mut(&mut info.flow_ref) };
+                    flow::mut_base(flow).clip = clip;
 
-                    let block_flow = info.flow_ref.as_block();
+                    let block_flow = flow.as_block();
                     block_flow.base.absolute_position_info = self.base.absolute_position_info;
 
                     let stacking_relative_position = self.base.stacking_relative_position;
